@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Place Value — Learning by Doing</title>
+<style>
+  :root{--bg:#f4f4f4;--panel:#fff;--muted:#888;--accent:#2c3e50}
+  body{font-family:Inter, Arial, sans-serif;margin:20px;background:var(--bg);color:#222}
+  h1{text-align:center;margin:0 0 8px}
+  #question{margin:6px 0 14px;text-align:center}
+  #app{max-width:1000px;margin:0 auto}
+  #controls{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:12px}
+  #controls input{padding:8px;border-radius:6px;border:1px solid #ccc;width:120px}
+  button{padding:9px 14px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+  button.secondary{background:#7f8c8d}
+  #workspace{display:flex;gap:16px}
+  #block-menu{width:240px;padding:12px;border-radius:10px;background:var(--panel);box-shadow:0 2px 6px rgba(0,0,0,0.06)}
+  .menu-block{height:56px;border-radius:8px;margin:8px 0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;cursor:grab;user-select:none}
+  .unit{background:#3498db}
+  .rod{background:#e67e22}
+  .flat{background:#27ae60}
+  .cube{background:#8e44ad}
+  #drop-area{flex:1;min-height:420px;border-radius:10px;padding:12px;background:var(--panel);border:3px dashed #bbb;position:relative}
+  .placed-block{width:60px;height:60px;border-radius:8px;color:#fff;display:flex;align-items:center;justify-content:center;position:absolute;cursor:pointer;font-weight:700}
+  #statusBox{position:absolute;right:20px;top:16px;font-weight:700}
+  @media(max-width:820px){#workspace{flex-direction:column}#block-menu{width:100%}}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>Arrange the Number Using Place-Value Blocks</h1>
+  <h2 id="question">Drag the blocks and arrange the number: <strong id="target">—</strong></h2>
+
+  <div id="controls">
+    <label for="teacherTarget">Set number (teacher):</label>
+    <input id="teacherTarget" type="number" min="1" max="9999" placeholder="enter 1–9999">
+    <button id="setBtn" type="button">Set</button>
+    <button id="startBtn" type="button" disabled>Start</button>
+    <button id="checkBtn" type="button" disabled>Check Answer</button>
+    <button id="clearBtn" type="button" class="secondary">Clear</button>
+  </div>
+
+  <div id="workspace">
+    <div id="block-menu" aria-label="Place value blocks">
+      <div class="menu-block unit" draggable="true" data-value="1" tabindex="0">Unit (1)</div>
+      <div class="menu-block rod" draggable="true" data-value="10" tabindex="0">Tens (10)</div>
+      <div class="menu-block flat" draggable="true" data-value="100" tabindex="0">Hundreds (100)</div>
+      <div class="menu-block cube" draggable="true" data-value="1000" tabindex="0">Thousands (1000)</div>
+    </div>
+
+    <div id="drop-area" aria-label="Workspace for placing blocks"></div>
+  </div>
+
+  <div id="statusBox" aria-live="polite"></div>
+</div>
+
+<script>
+// Wrap all initialization after DOM ready
+window.addEventListener('DOMContentLoaded', () => {
+  const teacherInput = document.getElementById('teacherTarget');
+  const setBtn = document.getElementById('setBtn');
+  const startBtn = document.getElementById('startBtn');
+  const checkBtn = document.getElementById('checkBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const dropArea = document.getElementById('drop-area');
+  const menuBlocks = document.querySelectorAll('.menu-block');
+  const targetSpan = document.getElementById('target');
+  const question = document.getElementById('question');
+  const statusBox = document.getElementById('statusBox');
+
+  let teacherVal = null; // number set by teacher
+  let targetNumber = null; // number to build (must be < teacherVal)
+  let blocks = []; // array of values placed
+
+  function setTargetDisplay(n){ targetSpan.textContent = (typeof n === 'number' && !isNaN(n)) ? n : '—'; }
+
+  // Set button: teacher provides the upper bound (must be >=1)
+  setBtn.addEventListener('click', () => {
+    const v = Number(teacherInput.value);
+    if (!Number.isInteger(v) || v <= 0 || v > 9999) {
+      alert('Please enter an integer between 1 and 9999.');
+      return;
+    }
+    teacherVal = v;
+    // enable Start; do not set targetNumber yet
+    startBtn.disabled = false;
+    checkBtn.disabled = true;
+    statusBox.innerHTML = '';
+    setTargetDisplay(null);
+    question.textContent = 'Press Start to generate a number less than ' + teacherVal + '.';
+  });
+
+  // Start: generate a random number strictly less than teacherVal
+  startBtn.addEventListener('click', () => {
+    if (!Number.isInteger(teacherVal) || teacherVal <= 0) {
+      alert('Please set a valid teacher number first.');
+      return;
+    }
+    // generate 0..teacherVal-1 (if teacherVal==1 then always 0)
+    targetNumber = Math.floor(Math.random() * teacherVal);
+    setTargetDisplay(targetNumber);
+    question.innerHTML = 'Drag the blocks and arrange the number: <strong>' + targetNumber + '</strong>';
+    // reset workspace
+    blocks = [];
+    dropArea.innerHTML = '';
+    statusBox.innerHTML = '';
+    checkBtn.disabled = false;
+  });
+
+  // Clear
+  clearBtn.addEventListener('click', () => {
+    blocks = [];
+    dropArea.innerHTML = '';
+    statusBox.innerHTML = '';
+    targetNumber = null;
+    setTargetDisplay(null);
+    checkBtn.disabled = true;
+    question.textContent = 'Drag the blocks and arrange the number: <strong>—</strong>';
+  });
+
+  // place block helper
+  function placeBlockAt(clientX, clientY, val){
+    const rect = dropArea.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'placed-block';
+    if (val === 1) el.classList.add('unit');
+    else if (val === 10) el.classList.add('rod');
+    else if (val === 100) el.classList.add('flat');
+    else if (val === 1000) el.classList.add('cube');
+    el.textContent = val;
+
+    // compute position relative to dropArea
+    let left = clientX - rect.left - 30;
+    let top = clientY - rect.top - 30;
+    left = Math.max(6, Math.min(left, rect.width - 66));
+    top = Math.max(6, Math.min(top, rect.height - 66));
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+
+    el.addEventListener('click', () => {
+      if (el.parentElement === dropArea) dropArea.removeChild(el);
+      const idx = blocks.indexOf(val);
+      if (idx !== -1) blocks.splice(idx, 1);
+    });
+
+    dropArea.appendChild(el);
+    blocks.push(val);
+  }
+
+  // menu interactions (drag & click)
+  menuBlocks.forEach(mb => {
+    mb.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', mb.dataset.value);
+    });
+    mb.addEventListener('click', () => {
+      const rect = dropArea.getBoundingClientRect();
+      // place near top center
+      placeBlockAt(rect.left + rect.width/2, rect.top + 40 + Math.random()*80, Number(mb.dataset.value));
+    });
+    mb.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); mb.click(); }
+    });
+  });
+
+  dropArea.addEventListener('dragover', e => e.preventDefault());
+  dropArea.addEventListener('drop', e => {
+    e.preventDefault();
+    const raw = e.dataTransfer.getData('text/plain');
+    const val = Number(raw);
+    if (!isNaN(val)) placeBlockAt(e.clientX, e.clientY, val);
+  });
+
+  // Check Answer: simple equality and show green/red button at top-right
+  checkBtn.addEventListener('click', () => {
+    if (targetNumber === null) {
+      alert('Please press Start to generate a target number first.');
+      return;
+    }
+    const total = blocks.reduce((a,b) => a + b, 0);
+    if (total === targetNumber) {
+      statusBox.innerHTML = '<button style="background:#2ecc71;color:#fff;padding:8px 14px;border:none;border-radius:6px;">Correct: ' + total + '</button>';
+    } else {
+      statusBox.innerHTML = '<button style="background:#e74c3c;color:#fff;padding:8px 14px;border:none;border-radius:6px;">Wrong: ' + total + '</button>';
+    }
+  });
+
+  // expose helpers for testing
+  window.__pv_sim = { placeBlockAt, clear: clearBtn.click };
+});
+</script>
+</body>
+</html>
