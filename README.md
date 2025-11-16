@@ -246,24 +246,3 @@ Green Button    Red Button
 
 ---
 
-## 🗂️ Version History / Changelog
-
-### **v1.0 – Initial Release**
-
-* Added units, tens, hundreds, thousands blocks.
-* Added drag-and-drop and click-to-place features.
-* Added Check Answer with green/red feedback.
-* Added teacher-controlled number generation.
-* Added dynamic student prompt.
-* Added Clear and Start functionalities.
-* Added documentation with instructional strategy.
-
-### **v1.1 – Documentation Upgrade**
-
-* Added original prompt text.
-* Added design philosophy.
-* Added interpretation of prompt.
-* Added ASCII diagram, task flow, and user instructions.
-* Added changelog and credits.
-
----
